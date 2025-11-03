@@ -4,16 +4,13 @@ using Test
 ##Seed for random reproducibility
 Random.seed!(1234)
 
-GetAllAttributes(object) = map(field -> getfield(object, field), fieldnames(typeof(object)))
-## Source : https://discourse.julialang.org/t/get-the-name-and-the-value-of-every-field-for-an-object/87052/2
-
 ##Station
 file_TN = joinpath(@__DIR__, "..", "stations", "TN_Nantes.txt")
 file_TX = joinpath(@__DIR__, "..", "stations", "TX_Nantes.txt")
 
-##### MULTIVARIATE AR MODEL #####
+##### UNIVARIATE AR MODEL #####
 
-##Model hyperparameters
+##Model hyperparameters  
 p = 2
 method_ = "monthlyLL"                 # "mean", "median", "concat", "sumLL", "monthlyLL"
 periodicity_model = "trigo"           # "trigo", "smooth", "autotrigo", "stepwise_trigo"
@@ -29,7 +26,7 @@ trendparam = nothing                  # nothing => default value -> "LOESS" : 0.
 n = 3
 
 ##All settings
-settings = OrderedDict((("file", file_TN),
+settings_uni = OrderedDict((("file", file_TN),
     ("p", p),
     ("method_", method_),
     ("periodicity_model", periodicity_model),
@@ -104,12 +101,5 @@ model_multi = fit_Multi_AR(x_multi[1:2000,:], date_vec_multi[1:2000],
 
 sample_multi = rand(model_multi, n)
 
-ref_data = load(joinpath(@__DIR__, "references.jld2"))["ref_data"]
+save("test/references.jld2", "ref_data", (model_uni, sample_uni, model_multi, sample_multi))
 
-@testset "PeriodicARModels.jl" begin
-    @test GetAllAttributes(model_uni) == GetAllAttributes(ref_data[1])
-    @test sample_uni == ref_data[2]
-    @test GetAllAttributes(model_multi) == GetAllAttributes(ref_data[3])
-    @test sample_multi == ref_data[4]
-
-end

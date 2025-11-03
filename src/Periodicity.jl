@@ -1,0 +1,121 @@
+using Dates, LinearAlgebra, DataInterpolations, RegularizationTools, GLM
+
+"""
+    fitted_periodicity_fonc(x::AbstractVector,return_parameters::Bool=false)
+
+Return a trigonometric function f of period 365.25 of equation f(t) = μ + a*cos(2π*t/365.25) + b*sin((2π*t/365.25) fitted on x. 
+If return_parameters=true, return a tuple with f and [μ,a,b]. Be careful : the function returned takes the same arguments as dayofyear_Leap() (Either Date of Integer and Date, see above).
+"""
+function fitted_periodicity_fonc(x::AbstractVector, date_vec::AbstractVector; OrderTrig::Integer=1, return_parameters::Bool=false)
+    N = length(x)
+    n2t = dayofyear_Leap.(date_vec)
+    ω = 2π / 365.2422
+    cos_nj = [cos.(ω * j * n2t) for j = 1:OrderTrig]
+    sin_nj = [sin.(ω * j * n2t) for j = 1:OrderTrig]
+    Design = stack([[ones(N)]; interleave2(cos_nj, sin_nj)])
+    beta = inv(transpose(Design) * Design) * transpose(Design) * x
+    function func(args...)
+        t = dayofyear_Leap(args...)
+        IL = interleave2([cos(ω * j * t) for j = 1:OrderTrig], [sin(ω * j * t) for j = 1:OrderTrig])
+        return dot(beta, [1; IL])
+    end
+    return return_parameters ? (func, beta) : func
+end
+
+AIC_seas(n, p, SRS) = 2p + n * (log(2π * SRS / n) + 1)
+BIC_seas(n, p, SRS) = p*log(n) + n * (log(2π * SRS / n) + 1)
+
+"""
+    fitted_smooth_periodicity_fonc(x::AbstractVector, date_vec::AbstractVector, orderdiff::Integer=9)
+
+Return a function which is the smooth regularization of the mean year of x, with the timeline date_vec. 
+"""
+function fitted_smooth_periodicity_fonc(x::AbstractVector, date_vec::AbstractVector; OrderDiff::Integer=9)
+    f = RegularizationSmooth(mean.(GatherYearScenario(x, date_vec)), 1:366, OrderDiff)
+    return date -> f(dayofyear_Leap(date))
+end
+
+"""
+    trigo_version(j, t, ω=2π / 365.2422)
+
+Return the jᵗʰ term of the trigonometric decomposition  of t (fitted_periodicity_fonc_stepwise)
+"""
+trigo_version(j, t, ω=2π / 365.2422) = (j == 1) + iseven(j) * cos(ω * j * t / 2) + isodd(j) * (j > 1) * sin(ω * (j - 1) * t / 2)
+
+"""
+    fitted_periodicity_fonc_stepwise(x::AbstractVector, date_vec::AbstractVector; MaxOrder::Integer=1, return_parameters::Bool=false, verbose::Bool=false)
+
+Return a trigonometric function the approximates the series x. Each component of the trigonometric decompositon (cos(ω h t) , sin(ω h t), with h the harmonic order) is chosen with the stepwise method to optimize AIC_seas.
+If return_parameters=true, return a tuple with f and the parameters estimated. Be careful : the function returned takes the same arguments as dayofyear_Leap() (Either Date of Integer and Date, see above).
+"""
+function fitted_periodicity_fonc_stepwise(x::AbstractVector, date_vec::AbstractVector; MaxOrder::Integer=50, return_parameters::Bool=false, verbose::Bool=false)
+    N = length(x)
+    n2t = dayofyear_Leap.(date_vec)
+    ω = 2π / 365.2422
+    cos_nj = [cos.(ω * j * n2t) for j = 1:MaxOrder]
+    sin_nj = [sin.(ω * j * n2t) for j = 1:MaxOrder]
+    Design = stack([[ones(N)]; interleave2(cos_nj, sin_nj)])
+    I = [1] #Choice of features
+    SubDesign = Design[:, I]
+    beta = inv(transpose(SubDesign) * SubDesign) * transpose(SubDesign) * x
+    best_AIC_seas = AIC_seas(N, 1, sum((SubDesign * beta .- x) .^ 2))
+    verbose ? println(best_AIC_seas, I) : nothing
+    for _ in 1:1000
+        AIC_seas_Candidates = Dict{Integer,AbstractFloat}()
+        for j in setdiff(1:(2*MaxOrder+1), I) #Searching between models with a new feature
+            SubDesign = Design[:, [I; j]]
+            beta = inv(transpose(SubDesign) * SubDesign) * transpose(SubDesign) * x
+            AIC_seas_Candidates[j] = AIC_seas(N, length(I) + 1, sum((SubDesign * beta .- x) .^ 2))
+        end
+        for j in I #Searching between models with a removed feature
+            SubDesign = Design[:, setdiff(I, [j])]
+            beta = inv(transpose(SubDesign) * SubDesign) * transpose(SubDesign) * x
+            AIC_seas_Candidates[j] = AIC_seas(N, length(I) - 1, sum((SubDesign * beta .- x) .^ 2))
+        end
+        J = argmin(AIC_seas_Candidates)
+        if best_AIC_seas < AIC_seas_Candidates[J]
+            break
+        else
+            best_AIC_seas = AIC_seas_Candidates[J]
+            I = J ∈ I ? setdiff(I, [J]) : [I; J]
+            verbose ? println(best_AIC_seas, sort(I)) : nothing
+        end
+    end
+    FinalDesign = Design[:, I]
+    beta = inv(transpose(FinalDesign) * FinalDesign) * transpose(FinalDesign) * x
+    function func(args...)
+        t = dayofyear_Leap(args...)
+        trigo_decompo = [trigo_version(j, t) for j in I]
+        return dot(beta, trigo_decompo)
+    end
+    Order = Integer(trunc(maximum(I) / 2))
+    return return_parameters ? (func, beta) : (func, Order)
+end
+
+
+function fitted_periodicity_fonc_auto(x::AbstractVector, date_vec::AbstractVector; MaxOrder::Integer=30, return_parameters::Bool=false, Verbose::Bool=false, UltraVerbose=false)
+    N = length(x)
+    n2t = dayofyear_Leap.(date_vec)
+    ω = 2π / 365.2422
+    cos_nj = [cos.(ω * j * n2t) for j = 1:MaxOrder]
+    sin_nj = [sin.(ω * j * n2t) for j = 1:MaxOrder]
+    Design = stack([[ones(N)]; interleave2(cos_nj, sin_nj)])
+    AIC_seas_vec, beta_vec = AbstractFloat[], AbstractVector[]
+    for i in 1:MaxOrder
+        SubDesign = Design[:, 1:(1+2i)]
+        beta = inv(transpose(SubDesign) * SubDesign) * transpose(SubDesign) * x
+        AIC_seas_ = AIC_seas(N, 1 + 2i, sum((SubDesign * beta .- x) .^ 2))
+        UltraVerbose ? println("i=$(i), AIC_seas=$(trunc(AIC_seas_,digits=2))") : nothing
+        push!(AIC_seas_vec, AIC_seas_)
+        push!(beta_vec, beta)
+    end
+    I = argmin(AIC_seas_vec)
+    beta = beta_vec[I]
+    function func(args...)
+        t = dayofyear_Leap(args...)
+        IL = interleave2([cos(ω * j * t) for j = 1:I], [sin(ω * j * t) for j = 1:I])
+        return dot(beta, [1; IL])
+    end
+    Verbose ? println("Best AIC ($(trunc(minimum(AIC_seas_vec)))) reached for i=$(I)") : nothing
+    return return_parameters ? (func, beta) : func, I
+end

@@ -1,5 +1,7 @@
 module PeriodicARModels
 
-# Write your package code here.
+include("structure.jl")
+
+export MonthlyAR, Multi_MonthlyAR, rand, fit_AR, fit_Multi_AR, save_model, load_model, CaracteristicsSeries, init_CaracteristicsSeries, extract_series, Common_indexes
 
 end
