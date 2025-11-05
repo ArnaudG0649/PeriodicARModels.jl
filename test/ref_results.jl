@@ -26,18 +26,18 @@ trendparam = nothing                  # nothing => default value -> "LOESS" : 0.
 n = 3
 
 ##All settings
-settings_uni = OrderedDict((("file", file_TN),
-    ("p", p),
-    ("method_", method_),
-    ("periodicity_model", periodicity_model),
-    ("degree_period", degree_period),
-    ("Trendtype", Trendtype),
-    ("trendparam", trendparam),
-    ("σ_periodicity_model", σ_periodicity_model),
-    ("σ_degree_period", σ_degree_period),
-    ("σ_Trendtype", σ_Trendtype),
-    ("σ_trendparam", σ_trendparam),
-    ("n", n)))
+# settings_uni = OrderedDict((("file", file_TN),
+#     ("p", p),
+#     ("method_", method_),
+#     ("periodicity_model", periodicity_model),
+#     ("degree_period", degree_period),
+#     ("Trendtype", Trendtype),
+#     ("trendparam", trendparam),
+#     ("σ_periodicity_model", σ_periodicity_model),
+#     ("σ_degree_period", σ_degree_period),
+#     ("σ_Trendtype", σ_Trendtype),
+#     ("σ_trendparam", σ_trendparam),
+#     ("n", n)))
 
 series_uni = first(extract_series(file_TN), 2000)
 
@@ -72,18 +72,18 @@ trendparam = 0.16                 # nothing => default value -> "LOESS" : 0.08, 
 ##Simulations
 n = 3
 
-settings_multi = OrderedDict((("file", file_TN),
-    ("p", p),
-    ("method_", method_),
-    ("periodicity_model", periodicity_model),
-    ("degree_period", degree_period),
-    ("Trendtype", Trendtype),
-    ("trendparam", trendparam),
-    ("σ_periodicity_model", σ_periodicity_model),
-    ("σ_degree_period", σ_degree_period),
-    ("σ_Trendtype", σ_Trendtype),
-    ("σ_trendparam", σ_trendparam),
-    ("n", n)))
+# settings_multi = OrderedDict((("file", file_TN),
+#     ("p", p),
+#     ("method_", method_),
+#     ("periodicity_model", periodicity_model),
+#     ("degree_period", degree_period),
+#     ("Trendtype", Trendtype),
+#     ("trendparam", trendparam),
+#     ("σ_periodicity_model", σ_periodicity_model),
+#     ("σ_degree_period", σ_degree_period),
+#     ("σ_Trendtype", σ_Trendtype),
+#     ("σ_trendparam", σ_trendparam),
+#     ("n", n)))
 
 date_vec_multi, x_multi = Common_indexes(file_TN, file_TX)
 
@@ -101,5 +101,5 @@ model_multi = fit_Multi_AR(x_multi[1:2000,:], date_vec_multi[1:2000],
 
 sample_multi = rand(model_multi, n)
 
-save("test/references.jld2", "ref_data", (model_uni, sample_uni, model_multi, sample_multi))
+save("test/references.jld2", "ref_data", (model_uni, sample_uni, model_multi, sample_multi)) #(model_uni, sample_uni, model_multi, sample_multi)
 

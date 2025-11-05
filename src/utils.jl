@@ -57,7 +57,7 @@ Create a vector where each sub-vector corresponds to a day of the year.
 Each temperature of the scenario is put in his corresponding sub-vector according to his day of the year.
 For example, Output[1] = [temperature of the 1st january of the first year, temperature of the 1st january of the second year, etc...]
 """
-GatherYearScenario(Scenario::AbstractVector, n2t::AbstractVector{T}) where T <: Integer = [Scenario[n2t .== i] for i in 1:366]
+GatherYearScenario(Scenario::AbstractVector, n2t::AbstractVector{T}) where T<:Integer = [Scenario[n2t.==i] for i in 1:366]
 GatherYearScenario(Scenario::AbstractVector, Date_vec::AbstractVector{Date}) = GatherYearScenario(Scenario, dayofyear_Leap.(Date_vec))
 
 
@@ -84,8 +84,8 @@ function Undrift!(y::AbstractVector)
     return nothing
 end
 
-mulmean(X)=mean.(X)
-mulmedian(X)=median.(X)
+mulmean(X) = mean.(X)
+mulmedian(X) = median.(X)
 
 
 """
@@ -111,3 +111,7 @@ unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
 
 GetAllAttributes(object) = map(field -> getfield(object, field), fieldnames(typeof(object)))
 ## Source : https://discourse.julialang.org/t/get-the-name-and-the-value-of-every-field-for-an-object/87052/2
+
+
+collectpdx0(x0::AbstractMatrix) = size(x0)
+collectpdx0(x0::AbstractVector) = 1, length(x0)
