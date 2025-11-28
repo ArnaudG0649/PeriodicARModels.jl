@@ -6,27 +6,20 @@ abstract type AR_SWG end
 @concrete struct MonthlyAR <: AR_SWG
     Φ                    # AbstractArray
     σ                    # AbstractVector
-    trend                # AbstractVector
-    period               # AbstractVector
-    σ_trend              # AbstractVector
-    σ_period             # AbstractVector
-    date_vec             # AbstractVector
-    y₁                   # AbstractVector
-    z                    # AbstractVector
 end
 
 
 @concrete struct Multi_MonthlyAR <: AR_SWG
     Φ                    # AbstractArray
     σ                    # AbstractArray
-    trend                # AbstractArray
-    period               # AbstractArray
-    σ_trend              # AbstractArray
-    σ_period             # AbstractArray
-    date_vec             # AbstractArray
-    y₁                   # AbstractArray
-    z                    # AbstractArray
 end
+    # trend                # AbstractArray
+    # period               # AbstractArray
+    # σ_trend              # AbstractArray
+    # σ_period             # AbstractArray
+    # date_vec             # AbstractArray
+    # y₁                   # AbstractArray
+    # z                    # AbstractArray
 
 include("utils.jl")
 include("Periodicity.jl")
@@ -86,7 +79,7 @@ include("Multi_AR_Estimation.jl")
 ismatrix(M) = false
 ismatrix(M::AbstractMatrix) = true
 
-function Base.rand(rng::Random.AbstractRNG, model::AR_SWG, n2t::AbstractVector; correction="resample", return_res=false, y₁=nothing, nspart=0, σ_nspart=1)
+function Base.rand(rng::Random.AbstractRNG, model::AR_SWG, n2t::AbstractVector; y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1)
     if isnothing(y₁)
         if ismatrix(model.period)
             p, d = length(model.Φ[1]), size(model.period)[2]
@@ -130,7 +123,18 @@ function fit_ARMonthlyParameters(y, date_vec, p, method_, Nb_try=0)
 end
 
 
-function fit_AR(x, date_vec;
+function fit_AR(z, date_vec;
+    p::Integer=1,
+    method_::String="monthlyLL",
+    Nb_try=0)
+
+    Φ, σ = fit_ARMonthlyParameters(z, date_vec, p, method_, Nb_try)
+
+    return MonthlyAR(Φ, σ)
+end
+
+
+function full_fit_AR(x, date_vec;
     p::Integer=1,
     method_::String="monthlyLL",
     periodicity_model::String="trigo",
@@ -147,12 +151,32 @@ function fit_AR(x, date_vec;
 
     Φ, σ = fit_ARMonthlyParameters(z, date_vec, p, method_, Nb_try)
 
-    return MonthlyAR(Φ, σ, trend, period, σ_trend, σ_period, date_vec, z[1:p], z)
+    Dict_ = Dict("Model" => MonthlyAR(Φ, σ),
+    "trend" => trend,
+    "period" => period,
+    "σ_trend" => σ_trend,
+    "σ_period" => σ_period,
+    "z" => z
+    )
+    return Dict_
+end
+# return MonthlyAR(Φ, σ, trend, period, σ_trend, σ_period, date_vec, z[1:p], z)
 
+function fit_Multi_AR(z, date_vec;
+    p::Integer=1,
+    method_::String="monthly")
+
+    if method_ == "monthly"
+        Φ, Σ = ParseMonthlyParameter(LL_Multi_AR_Estimation_monthly(z, date_vec, p), size(z)[2])
+    else
+        nothing #Take Φ Σ daily (e.g 366-length list of matrix for Σ)
+    end
+
+    return Multi_MonthlyAR(Φ, Σ)
 end
 
 
-function fit_Multi_AR(x, date_vec;
+function full_fit_Multi_AR(x, date_vec;
     p::Integer=1,
     method_::String="monthly",
     periodicity_model::String="trigo",
@@ -172,7 +196,14 @@ function fit_Multi_AR(x, date_vec;
         nothing #Take Φ Σ daily (e.g 366-length list of matrix for Σ)
     end
 
-    return Multi_MonthlyAR(Φ, Σ, trend_mat, period_mat, σ_trend_mat, σ_period_mat, date_vec, z[1:p, :], z)
+    Dict_ = Dict("Model" => Multi_MonthlyAR(Φ, Σ),
+    "trend" => trend_mat,
+    "period" => period_mat,
+    "σ_trend" => σ_trend_mat,
+    "σ_period" => σ_period_mat,
+    "z" => z
+    )
+    return Dict_
 end
 
 defaultparam = Dict([("LOESS", 0.08), ("polynomial", 1), ("null", 1)])

@@ -1,15 +1,5 @@
-using PeriodicARModels, OrderedCollections, FileIO, JLD2, Random, Dates
-using Test
-
 ##Seed for random reproducibility
 Random.seed!(1234)
-
-GetAllAttributes(object) = map(field -> getfield(object, field), fieldnames(typeof(object)))
-## Source : https://discourse.julialang.org/t/get-the-name-and-the-value-of-every-field-for-an-object/87052/2
-
-##Station
-file_TN = joinpath(@__DIR__, "..", "stations", "TN_Nantes.txt")
-file_TX = joinpath(@__DIR__, "..", "stations", "TX_Nantes.txt")
 
 ##### UNIVARIATE AR MODEL #####
 
@@ -30,25 +20,27 @@ n = 3
 
 series_uni = first(extract_series(file_TN), 2000)
 
-dict_uni = full_fit_AR(series_uni[:, 2], series_uni.DATE,
-    p=p,
-    method_=method_,
-    periodicity_model=periodicity_model,
-    degree_period=degree_period,
-    Trendtype=Trendtype,
-    trendparam=trendparam,
-    σ_periodicity_model=σ_periodicity_model,
-    σ_degree_period=σ_degree_period,
-    σ_Trendtype=σ_Trendtype,
-    σ_trendparam=σ_trendparam)
+z, trend, period, σ_trend, σ_period = decompose(series_uni[:, 2],
+    series_uni.DATE,
+    periodicity_model,
+    degree_period,
+    Trendtype,
+    trendparam,
+    σ_periodicity_model,
+    σ_degree_period,
+    σ_Trendtype,
+    σ_trendparam)
 
-periodicty = dict_uni["period"][dayofyear_Leap.(series_uni.DATE)]
-σ_periodicty = dict_uni["σ_period"][dayofyear_Leap.(series_uni.DATE)]
-nspart = dict_uni["trend"] .+ periodicty
-σ_nspart = dict_uni["σ_trend"] .* σ_periodicty
+model_uni = fit_AR(z, series_uni.DATE, p=p, method_=method_)
 
-sample_uni = [rand(dict_uni["Model"], month.(series_uni.DATE), y₁=dict_uni["z"][1:p]) for _ in 1:n]
-sample_uni = map(sim -> sim .* σ_nspart + nspart, sample_uni)
+periodicity = period[dayofyear_Leap.(series_uni.DATE)]
+σ_periodicity = σ_period[dayofyear_Leap.(series_uni.DATE)]
+nspart = trend .+ periodicity
+σ_nspart = σ_trend .* σ_periodicity
+
+sample_uni_nd = [rand(model_uni, month.(series_uni.DATE), y₁=z[1:p]) for _ in 1:n]
+sample_uni_nd = map(sim -> sim .* σ_nspart + nspart, sample_uni_nd)
+
 ##### MULTIVARIATE AR MODEL #####
 
 ##Model hyperparameters
@@ -69,41 +61,25 @@ n = 3
 date_vec_multi, x_multi = Common_indexes(file_TN, file_TX)
 date_vec_multi, x_multi = date_vec_multi[1:2000], x_multi[1:2000, :]
 
-dict_multi = full_fit_Multi_AR(x_multi, date_vec_multi,
-    p=p,
-    method_=method_,
-    periodicity_model=periodicity_model,
-    degree_period=degree_period,
-    Trendtype=Trendtype,
-    trendparam=trendparam,
-    σ_periodicity_model=σ_periodicity_model,
-    σ_degree_period=σ_degree_period,
-    σ_Trendtype=σ_Trendtype,
-    σ_trendparam=σ_trendparam)
+z, trend, period, σ_trend, σ_period = decompose(x_multi,
+    date_vec_multi,
+    periodicity_model,
+    degree_period,
+    Trendtype,
+    trendparam,
+    σ_periodicity_model,
+    σ_degree_period,
+    σ_Trendtype,
+    σ_trendparam)
 
-period = dict_multi["period"][dayofyear_Leap.(date_vec_multi), :]
-σ_period = dict_multi["σ_period"][dayofyear_Leap.(date_vec_multi), :]
-nspart = dict_multi["trend"] .+ period
-σ_nspart = dict_multi["σ_trend"] .* σ_period
+model_multi = fit_Multi_AR(z, date_vec_multi, p=p, method_=method_)
 
-sample_multi = [rand(dict_multi["Model"], month.(date_vec_multi), y₁=dict_multi["z"][1:p, :], nspart=nspart, σ_nspart=σ_nspart) for _ in 1:n]
+periodicity = period[dayofyear_Leap.(date_vec_multi), :]
+σ_periodicity = σ_period[dayofyear_Leap.(date_vec_multi), :]
+nspart = trend .+ periodicity
+σ_nspart = σ_trend .* σ_periodicity
 
-include(joinpath(@__DIR__,"testnodict.jl"))
-
-ref_data = load(joinpath(@__DIR__, "references.jld2"))["ref_data"]
-
-@testset "PeriodicARModels.jl" begin
-    @test model_uni.Φ == ref_data[1].Φ
-    @test model_uni.σ == ref_data[1].σ
-    @test sample_uni == ref_data[2]
-    @test model_multi.Φ == ref_data[3].Φ
-    @test model_multi.σ == ref_data[3].σ
-    @test sample_multi == ref_data[4]
-
-
-end
-
-
+sample_multi_nd = [rand(model_multi, month.(date_vec_multi), y₁=z[1:p, :], nspart=nspart, σ_nspart=σ_nspart) for _ in 1:n]
 
 
 

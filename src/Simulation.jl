@@ -86,7 +86,7 @@ function SimulatePairedScenarioCor!(L, p, n2t, Φ, Σ, d, rng)
 end
 
 
-function SimulateScenario(x0::AbstractArray, n2t::AbstractVector, Φ, Σ::AbstractVector{Matrix{T}}, nspart, σ_nspart; rng=Random.default_rng(), index_nspart=nothing, correction="null", return_res=false) where T<:AbstractFloat
+function SimulateScenario(x0::AbstractArray, n2t::AbstractVector, Φ, Σ::AbstractVector{Matrix{T}}, nspart, σ_nspart; rng=Random.default_rng(), correction="null", return_res=false) where T<:AbstractFloat
     p, d = collectpdx0(x0)
     M0 = copy(x0)
     p == 1 ? M0 = reshape(M0, (1, d)) : nothing
@@ -97,7 +97,7 @@ function SimulateScenario(x0::AbstractArray, n2t::AbstractVector, Φ, Σ::Abstra
 
     return return_res ? ((L .* σ_nspart .+ nspart), L) : L .* σ_nspart .+ nspart
 end
-function SimulateScenario(x0::AbstractArray, n2t::AbstractVector, Φ, Σ::AbstractVector{Matrix{T}}; rng=Random.default_rng(), index_nspart=nothing, correction="null", return_res=false) where T<:AbstractFloat
+function SimulateScenario(x0::AbstractArray, n2t::AbstractVector, Φ, Σ::AbstractVector{Matrix{T}}; rng=Random.default_rng(), correction="null", return_res=false) where T<:AbstractFloat
     p, d = collectpdx0(x0)
     M0 = copy(x0)
     p == 1 ? M0 = reshape(M0, (1, d)) : nothing
