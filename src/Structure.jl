@@ -117,14 +117,12 @@ function Base.rand(rng::Random.AbstractRNG, model::MonthlySWG, n2t::AbstractVect
         if n_sim == 1
             return SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            println("1")
             return [SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     else
         if n_sim == 1
             return SimulateScenario(y₁, n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            println("2")
             return [SimulateScenario(y₁, n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     end
@@ -134,19 +132,16 @@ function Base.rand(rng::Random.AbstractRNG, model::MonthlyAR, n2t::AbstractVecto
         if n_sim == 1
             return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            println("3")
             return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim] : [SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     else
         if n_sim == 1
             return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(y₁, n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(y₁, n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            println("4")
             return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(y₁, n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim] : [SimulateScenario(y₁, n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     end
 end
-
 function Base.rand(rng::Random.AbstractRNG, model::AR_SWG, date_vec::AbstractVector{Date}; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1)
     return rand(rng, model, month.(date_vec), n_sim=n_sim, y₁=y₁, return_res=return_res, correction=correction, nspart=nspart, σ_nspart=σ_nspart)
 end
@@ -189,7 +184,19 @@ function MonthlyAR(z::AbstractVector, date_vec::AbstractVector{Date},
 
     return MonthlyAR(Φ, σ)
 end
+function MonthlyAR(z::AbstractMatrix, date_vec::AbstractVector{Date},
+    p::Integer=1;
+    method_::String="monthly",
+    Nb_try=0)
 
+    if method_ == "monthly"
+        Φ, Σ = ParseMonthlyParameter(LL_Multi_AR_Estimation_monthly(z, date_vec, p), size(z)[2])
+    else
+        nothing #Take Φ Σ daily (e.g 366-length list of matrix for Σ)
+    end
+
+    return MonthlyAR(Φ, Σ)
+end
 
 function MonthlySWG(x, date_vec;
     p::Integer=1,
@@ -210,83 +217,17 @@ function MonthlySWG(x, date_vec;
 
     return MonthlySWG(AR_model, trend, period, σ_trend, σ_period, date_vec, z)
 end
-# @concrete struct MonthlySWG
-#     monthlyAR
-#     trend                # AbstractArray
-#     period               # AbstractArray
-#     σ_trend              # AbstractArray
-#     σ_period             # AbstractArray
-#     date_vec             # AbstractArray
-#     y₁                   # AbstractArray
-#     z                    # AbstractArray
-# end
-# return MonthlyAR(Φ, σ, trend, period, σ_trend, σ_period, date_vec, z[1:p], z)
 
-function MonthlyAR(z::AbstractMatrix, date_vec::AbstractVector{Date},
-    p::Integer=1;
-    method_::String="monthly",
-    Nb_try=0)
-
-    if method_ == "monthly"
-        Φ, Σ = ParseMonthlyParameter(LL_Multi_AR_Estimation_monthly(z, date_vec, p), size(z)[2])
-    else
-        nothing #Take Φ Σ daily (e.g 366-length list of matrix for Σ)
-    end
-
-    return MonthlyAR(Φ, Σ)
-end
-
-# function full_fit_AR(x, date_vec;
-#     p::Integer=1,
-#     method_::String="monthlyLL",
-#     periodicity_model::String="trigo",
-#     degree_period::Integer=0,
-#     Trendtype="LOESS",
-#     trendparam=nothing,
-#     σ_periodicity_model::String="trigo",
-#     σ_degree_period::Integer=0,
-#     σ_Trendtype="LOESS",
-#     σ_trendparam=nothing,
-#     Nb_try=0)
-function full_fit_Multi_AR(x, date_vec;
-    p::Integer=1,
-    method_::String="monthly",
-    periodicity_model::String="trigo",
-    degree_period::Integer=8,
-    Trendtype="LOESS",
-    trendparam=nothing,
-    σ_periodicity_model::String="trigo",
-    σ_degree_period::Integer=8,
-    σ_Trendtype="LOESS",
-    σ_trendparam=nothing)
-
-    z, trend_mat, period_mat, σ_trend_mat, σ_period_mat = decompose(x, date_vec, periodicity_model, degree_period, Trendtype, trendparam, σ_periodicity_model, σ_degree_period, σ_Trendtype, σ_trendparam)
-
-    if method_ == "monthly"
-        Φ, Σ = ParseMonthlyParameter(LL_Multi_AR_Estimation_monthly(z, date_vec, p), size(x)[2])
-    else
-        nothing #Take Φ Σ daily (e.g 366-length list of matrix for Σ)
-    end
-
-    Dict_ = Dict("Model" => Multi_MonthlyAR(Φ, Σ),
-        "trend" => trend_mat,
-        "period" => period_mat,
-        "σ_trend" => σ_trend_mat,
-        "σ_period" => σ_period_mat,
-        "z" => z
-    )
-    return Dict_
-end
 
 defaultparam = Dict([("LOESS", 0.08), ("polynomial", 1), ("null", 1)])
-defaultorder = Dict([("trigo", 5), ("smooth", 9), ("autotrigo", 50), ("stepwise_trigo", 50)])
+defaultorder = Dict([("trigo", 8), ("smooth", 9), ("autotrigo", 50), ("stepwise_trigo", 50)])
 function decompose(x, date_vec,
     periodicity_model::String="trigo",
-    degree_period::Integer=8,
+    degree_period::Integer=0,
     Trendtype="LOESS",
     trendparam=nothing,
     σ_periodicity_model::String="trigo",
-    σ_degree_period::Integer=8,
+    σ_degree_period::Integer=0,
     σ_Trendtype="LOESS",
     σ_trendparam=nothing)
 
@@ -356,7 +297,6 @@ function decompose(x, date_vec,
     return length(eachcol(x)) == 1 ? (z[1], trend_mat[1], period_mat[1], σ_trend_mat[1], σ_period_mat[1]) : stack.((z, trend_mat, period_mat, σ_trend_mat, σ_period_mat))
 end
 
-
 save_model(model, title="model.jld2") = save(title, "model", model)
 load_model(file) = load(file)["model"]
 
@@ -366,7 +306,7 @@ load_model(file) = load(file)["model"]
     df_month
 end
 
-function init_CaracteristicsSeries(series)
+function CaracteristicsSeries(series)
     Days_list = GatherYearScenario(series[!, 2], series.DATE)
     avg_day = mean.(Days_list)
     max_day = maximum.(Days_list)

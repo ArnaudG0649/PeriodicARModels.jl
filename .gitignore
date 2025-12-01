@@ -4,3 +4,5 @@
 /Manifest*.toml
 /docs/Manifest*.toml
 /docs/build/
+/API.md
+/Daily_Multi_AR_Estimation.jl

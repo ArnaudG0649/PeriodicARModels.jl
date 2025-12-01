@@ -17,7 +17,7 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "API" => "API.md",
+        # "API" => "API.md",
     ],
     checkdocs=:none
 )

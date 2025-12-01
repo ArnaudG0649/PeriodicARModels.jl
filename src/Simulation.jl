@@ -36,27 +36,6 @@ end
 #### Simulating paired scenarios ####
 
 
-# """
-#     From (x,y) return y-dist if x>y-dist
-# """
-# clip_(couple::AbstractVector, dist=1) = min(couple[1], couple[2] - dist)
-
-# clip_(x::AbstractMatrix, dist=1) = [mapslices(clip_, x, dims=2) x[:, 2]]
-
-# function TransformTN_TX!(x, σ_nspart_, nspart_, σTX)
-#     if σTX
-#         return hcat(nspart_[:, 1] .+ σ_nspart_[:, 1] .* x[:, 1], x[:, 1] + nspart_[:, 2] - nspart_[:, 1] + x[:, 2] .* (σ_nspart_[:, 2] .^ 2 - σ_nspart_[:, 1] .^ 2) .^ 0.5)
-#     else
-#         return hcat(x[:, 2] + nspart_[:, 1] - nspart_[:, 2] + x[:, 1] .* (σ_nspart_[:, 1] .^ 2 - σ_nspart_[:, 2] .^ 2) .^ 0.5, nspart_[:, 2] .+ σ_nspart_[:, 2] .* x[:, 2])
-#     end
-# end
-# function TransformTN_TX(x, σ_nspart_, nspart_, id_σTX, id_σTN, Output)
-#     Output[id_σTX] = TransformTN_TX!(x[id_σTX], σ_nspart_[id_σTX], nspart_[id_σTX], true)
-#     Output[id_σTN] = TransformTN_TX!(x[id_σTN], σ_nspart_[id_σTN], nspart_[id_σTN], false)
-#     return Output
-# end
-
-
 function SimulatePairedScenario!(L, p, n2t, Φ, Σ, d, rng)
     for (i, t) in enumerate(n2t[p+1:end])
         L[i+p, :] = sum(Φ[t][j] * L[i+p-j, :] for j in 1:p) .+ Σ[t] * randn(rng, d)
