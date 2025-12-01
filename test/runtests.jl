@@ -30,7 +30,7 @@ n = 3
 
 series_uni = first(extract_series(file_TN), 2000)
 
-dict_uni = full_fit_AR(series_uni[:, 2], series_uni.DATE,
+model_uni = MonthlySWG(series_uni[:, 2], series_uni.DATE,
     p=p,
     method_=method_,
     periodicity_model=periodicity_model,
@@ -42,13 +42,9 @@ dict_uni = full_fit_AR(series_uni[:, 2], series_uni.DATE,
     σ_Trendtype=σ_Trendtype,
     σ_trendparam=σ_trendparam)
 
-periodicty = dict_uni["period"][dayofyear_Leap.(series_uni.DATE)]
-σ_periodicty = dict_uni["σ_period"][dayofyear_Leap.(series_uni.DATE)]
-nspart = dict_uni["trend"] .+ periodicty
-σ_nspart = dict_uni["σ_trend"] .* σ_periodicty
+sample_uni = rand(model_uni, y₁=model_uni.z[1:p], n_sim=n)
 
-sample_uni = [rand(dict_uni["Model"], month.(series_uni.DATE), y₁=dict_uni["z"][1:p]) for _ in 1:n]
-sample_uni = map(sim -> sim .* σ_nspart + nspart, sample_uni)
+
 ##### MULTIVARIATE AR MODEL #####
 
 ##Model hyperparameters
@@ -69,7 +65,7 @@ n = 3
 date_vec_multi, x_multi = Common_indexes(file_TN, file_TX)
 date_vec_multi, x_multi = date_vec_multi[1:2000], x_multi[1:2000, :]
 
-dict_multi = full_fit_Multi_AR(x_multi, date_vec_multi,
+model_multi = MonthlySWG(x_multi, date_vec_multi,
     p=p,
     method_=method_,
     periodicity_model=periodicity_model,
@@ -81,25 +77,21 @@ dict_multi = full_fit_Multi_AR(x_multi, date_vec_multi,
     σ_Trendtype=σ_Trendtype,
     σ_trendparam=σ_trendparam)
 
-period = dict_multi["period"][dayofyear_Leap.(date_vec_multi), :]
-σ_period = dict_multi["σ_period"][dayofyear_Leap.(date_vec_multi), :]
-nspart = dict_multi["trend"] .+ period
-σ_nspart = dict_multi["σ_trend"] .* σ_period
 
-sample_multi = [rand(dict_multi["Model"], month.(date_vec_multi), y₁=dict_multi["z"][1:p, :], nspart=nspart, σ_nspart=σ_nspart) for _ in 1:n]
+sample_multi = rand(model_multi,y₁=model_multi.z[1:p, :],n_sim = n)
 
-include(joinpath(@__DIR__,"testnodict.jl"))
+# include(joinpath(@__DIR__, "testnodict.jl"))
 
 ref_data = load(joinpath(@__DIR__, "references.jld2"))["ref_data"]
 
 @testset "PeriodicARModels.jl" begin
-    @test model_uni.Φ == ref_data[1].Φ
-    @test model_uni.σ == ref_data[1].σ
+    @test model_uni.monthlyAR.Φ == ref_data[1].Φ
+    @test model_uni.monthlyAR.σ == ref_data[1].σ
     @test sample_uni == ref_data[2]
-    @test model_multi.Φ == ref_data[3].Φ
-    @test model_multi.σ == ref_data[3].σ
-    @test sample_multi == ref_data[4]
 
+    @test model_multi.monthlyAR.Φ == ref_data[3].Φ
+    @test model_multi.monthlyAR.σ == ref_data[3].σ
+    @test sample_multi == ref_data[4]
 
 end
 

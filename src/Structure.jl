@@ -2,24 +2,38 @@ using FileIO, JLD2, ConcreteStructs
 
 abstract type AR_SWG end
 
-
 @concrete struct MonthlyAR <: AR_SWG
     Φ                    # AbstractArray
     σ                    # AbstractVector
 end
 
 
-@concrete struct Multi_MonthlyAR <: AR_SWG
-    Φ                    # AbstractArray
-    σ                    # AbstractArray
+@concrete struct MonthlySWG <: AR_SWG
+    monthlyAR
+    trend                # AbstractArray
+    period               # AbstractArray
+    σ_trend              # AbstractArray
+    σ_period             # AbstractArray
+    date_vec             # AbstractArray
+    z                    # AbstractArray
 end
-    # trend                # AbstractArray
-    # period               # AbstractArray
-    # σ_trend              # AbstractArray
-    # σ_period             # AbstractArray
-    # date_vec             # AbstractArray
-    # y₁                   # AbstractArray
-    # z                    # AbstractArray
+
+# @concrete struct Multi_MonthlyAR <: AR_SWG
+#     Φ                    # AbstractArray
+#     σ                    # AbstractArray
+# end
+
+
+# @concrete struct Multi_MonthlySWG <: AR_SWG
+#     multi_MonthlyAR
+#     trend                # AbstractArray
+#     period               # AbstractArray
+#     σ_trend              # AbstractArray
+#     σ_period             # AbstractArray
+#     date_vec             # AbstractArray
+#     y₁                   # AbstractArray
+#     z                    # AbstractArray
+# end
 
 include("utils.jl")
 include("Periodicity.jl")
@@ -79,24 +93,67 @@ include("Multi_AR_Estimation.jl")
 ismatrix(M) = false
 ismatrix(M::AbstractMatrix) = true
 
-function Base.rand(rng::Random.AbstractRNG, model::AR_SWG, n2t::AbstractVector; y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1)
+function random_init_cond(Φ, σ)
+    if ismatrix(σ[1])
+        p, d = length(Φ[1]), size(σ[1])[2]
+        y₁ = stack([σ[n2t[1]] * randn(rng, d) for _ in 1:p], dims=1)
+    else
+        y₁ = [rand(rng, Normal(0, σ[n2t[1]])) for _ in 1:(size(Φ)[2])]
+    end
+    return y₁
+end
+
+function Base.rand(rng::Random.AbstractRNG, model::MonthlySWG, n2t::AbstractVector; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1)
+    if ismatrix(model.period)
+        period = model.period[dayofyear_Leap.(model.date_vec), :]
+        σ_period = model.σ_period[dayofyear_Leap.(model.date_vec), :]
+    else
+        period = model.period[dayofyear_Leap.(model.date_vec)]
+        σ_period = model.σ_period[dayofyear_Leap.(model.date_vec)]
+    end
+    nspart = model.trend .+ period
+    σ_nspart = model.σ_trend .* σ_period
     if isnothing(y₁)
-        if ismatrix(model.period)
-            p, d = length(model.Φ[1]), size(model.period)[2]
-            y₁ = stack([model.σ[n2t[1]] * randn(rng, d) for _ in 1:p], dims=1)
+        if n_sim == 1
+            return SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            y₁ = [rand(rng, Normal(0, model.σ[n2t[1]])) for _ in 1:(size(model.Φ)[2])]
+            println("1")
+            return [SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+        end
+    else
+        if n_sim == 1
+            return SimulateScenario(y₁, n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
+        else
+            println("2")
+            return [SimulateScenario(y₁, n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     end
-    return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(y₁, n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(y₁, n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
 end
-function Base.rand(rng::Random.AbstractRNG, model::AR_SWG, date_vec::AbstractVector{Date}; y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1)
-    return rand(rng, model, month.(date_vec), y₁=y₁, return_res=return_res, correction=correction, nspart=nspart, σ_nspart=σ_nspart)
+function Base.rand(rng::Random.AbstractRNG, model::MonthlyAR, n2t::AbstractVector; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1)
+    if isnothing(y₁)
+        if n_sim == 1
+            return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
+        else
+            println("3")
+            return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim] : [SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+        end
+    else
+        if n_sim == 1
+            return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(y₁, n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(y₁, n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
+        else
+            println("4")
+            return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(y₁, n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim] : [SimulateScenario(y₁, n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+        end
+    end
 end
-Base.rand(model::AR_SWG, n2t::AbstractVector; y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(Random.default_rng(), model, n2t, y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
-Base.rand(model::AR_SWG, date_vec::AbstractVector{Date}; y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(Random.default_rng(), model, month.(date_vec), y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
 
-
+function Base.rand(rng::Random.AbstractRNG, model::AR_SWG, date_vec::AbstractVector{Date}; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1)
+    return rand(rng, model, month.(date_vec), n_sim=n_sim, y₁=y₁, return_res=return_res, correction=correction, nspart=nspart, σ_nspart=σ_nspart)
+end
+Base.rand(model::AR_SWG, n2t::AbstractVector; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(Random.default_rng(), model, n2t, n_sim=n_sim, y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
+Base.rand(model::AR_SWG, date_vec::AbstractVector{Date}; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(Random.default_rng(), model, month.(date_vec), n_sim=n_sim, y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
+Base.rand(rng::Random.AbstractRNG, model::MonthlySWG; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(rng, model, month.(model.date_vec), n_sim=n_sim, y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
+Base.rand(model::MonthlySWG; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(Random.default_rng(), model, month.(model.date_vec), n_sim=n_sim, y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
 
 # rand(myAR, date_vec[1]:date_vec[end], 100, y₁=0.1)
 
@@ -123,8 +180,8 @@ function fit_ARMonthlyParameters(y, date_vec, p, method_, Nb_try=0)
 end
 
 
-function fit_AR(z, date_vec;
-    p::Integer=1,
+function MonthlyAR(z::AbstractVector, date_vec::AbstractVector{Date},
+    p::Integer=1;
     method_::String="monthlyLL",
     Nb_try=0)
 
@@ -134,7 +191,7 @@ function fit_AR(z, date_vec;
 end
 
 
-function full_fit_AR(x, date_vec;
+function MonthlySWG(x, date_vec;
     p::Integer=1,
     method_::String="monthlyLL",
     periodicity_model::String="trigo",
@@ -149,22 +206,26 @@ function full_fit_AR(x, date_vec;
 
     z, trend, period, σ_trend, σ_period = decompose(x, date_vec, periodicity_model, degree_period, Trendtype, trendparam, σ_periodicity_model, σ_degree_period, σ_Trendtype, σ_trendparam)
 
-    Φ, σ = fit_ARMonthlyParameters(z, date_vec, p, method_, Nb_try)
+    AR_model = MonthlyAR(z, date_vec, p, method_=method_, Nb_try=Nb_try)
 
-    Dict_ = Dict("Model" => MonthlyAR(Φ, σ),
-    "trend" => trend,
-    "period" => period,
-    "σ_trend" => σ_trend,
-    "σ_period" => σ_period,
-    "z" => z
-    )
-    return Dict_
+    return MonthlySWG(AR_model, trend, period, σ_trend, σ_period, date_vec, z)
 end
+# @concrete struct MonthlySWG
+#     monthlyAR
+#     trend                # AbstractArray
+#     period               # AbstractArray
+#     σ_trend              # AbstractArray
+#     σ_period             # AbstractArray
+#     date_vec             # AbstractArray
+#     y₁                   # AbstractArray
+#     z                    # AbstractArray
+# end
 # return MonthlyAR(Φ, σ, trend, period, σ_trend, σ_period, date_vec, z[1:p], z)
 
-function fit_Multi_AR(z, date_vec;
-    p::Integer=1,
-    method_::String="monthly")
+function MonthlyAR(z::AbstractMatrix, date_vec::AbstractVector{Date},
+    p::Integer=1;
+    method_::String="monthly",
+    Nb_try=0)
 
     if method_ == "monthly"
         Φ, Σ = ParseMonthlyParameter(LL_Multi_AR_Estimation_monthly(z, date_vec, p), size(z)[2])
@@ -172,10 +233,21 @@ function fit_Multi_AR(z, date_vec;
         nothing #Take Φ Σ daily (e.g 366-length list of matrix for Σ)
     end
 
-    return Multi_MonthlyAR(Φ, Σ)
+    return MonthlyAR(Φ, Σ)
 end
 
-
+# function full_fit_AR(x, date_vec;
+#     p::Integer=1,
+#     method_::String="monthlyLL",
+#     periodicity_model::String="trigo",
+#     degree_period::Integer=0,
+#     Trendtype="LOESS",
+#     trendparam=nothing,
+#     σ_periodicity_model::String="trigo",
+#     σ_degree_period::Integer=0,
+#     σ_Trendtype="LOESS",
+#     σ_trendparam=nothing,
+#     Nb_try=0)
 function full_fit_Multi_AR(x, date_vec;
     p::Integer=1,
     method_::String="monthly",
@@ -197,11 +269,11 @@ function full_fit_Multi_AR(x, date_vec;
     end
 
     Dict_ = Dict("Model" => Multi_MonthlyAR(Φ, Σ),
-    "trend" => trend_mat,
-    "period" => period_mat,
-    "σ_trend" => σ_trend_mat,
-    "σ_period" => σ_period_mat,
-    "z" => z
+        "trend" => trend_mat,
+        "period" => period_mat,
+        "σ_trend" => σ_trend_mat,
+        "σ_period" => σ_period_mat,
+        "z" => z
     )
     return Dict_
 end

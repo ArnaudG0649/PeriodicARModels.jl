@@ -6,9 +6,5 @@ CurrentModule = PeriodicARModels
 
 Documentation for [PeriodicARModels](https://github.com/ArnaudG0649/PeriodicARModels.jl).
 
-```@index
-```
+A package to use AR models with periodic parameters (often monthly) for Stochastic Weather Generators. 
 
-```@autodocs
-Modules = [PeriodicARModels]
-```

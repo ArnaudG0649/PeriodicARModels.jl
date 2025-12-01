@@ -107,6 +107,13 @@ interleave2(args...) = collect(Iterators.flatten(zip(args...)))
 
 
 unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
+#exemple to understand : 
+# a = [(4,8),(7,7),(6,6),(1,0)]
+# eltype(a) = Tuple{Int64, Int64} type of a components
+# fieldnames(eltype(a)) = (1,2) name of attributes of each tuple
+# getfield(a[1], 1) = 4 first attribute of the first element
+# getfield.(a,1) first attribute of all elements
+
 ## Source : https://stackoverflow.com/questions/36367482/unzip-an-array-of-tuples-in-julia
 
 GetAllAttributes(object) = map(field -> getfield(object, field), fieldnames(typeof(object)))
