@@ -1,5 +1,5 @@
-import Pkg # BE CAREFUL TO REMOVE/PUT IN COMMENTS WHEN PUSHING
-Pkg.activate(@__DIR__)
+# import Pkg # BE CAREFUL TO REMOVE/PUT IN COMMENTS WHEN PUSHING
+# Pkg.activate(@__DIR__)
 
 using PeriodicARModels
 using Documenter
@@ -22,10 +22,10 @@ makedocs(;
     checkdocs=:none
 )
 
-# deploydocs(;
-#     repo="github.com/ArnaudG0649/PeriodicARModels.jl",
-#     devbranch="master",
-# )
+deploydocs(;
+    repo="github.com/ArnaudG0649/PeriodicARModels.jl",
+    devbranch="master",
+)
 
-using LiveServer; # BE CAREFUL TO REMOVE/PUT IN COMMENTS WHEN PUSHING
-serve(dir="docs/build");
+# using LiveServer; # BE CAREFUL TO REMOVE/PUT IN COMMENTS WHEN PUSHING
+# serve(dir="docs/build");
