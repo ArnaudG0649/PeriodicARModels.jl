@@ -124,3 +124,6 @@ end
 TakeMonthlyParameter(MatVec::Vector{Vector{Matrix{T}}}, IndexTuple, p=1) where T<:AbstractFloat = [MatVec[m][p][IndexTuple[1], IndexTuple[2]] for m in 1:12]
 TakeMonthlyParameter(MatVec::Vector{Matrix{T}}, IndexTuple) where T<:AbstractFloat = [MatVec[m][IndexTuple[1], IndexTuple[2]] for m in 1:12]
 
+
+# FlatΦ(Φ,d=2) = vcat([hcat([reshape(v_sub,(1,d^2)) for v_sub in Φ[m]]...) for m in 1:12]...)
+# Flatσ(σ,d=2) = vcat([reshape(σ[m],(1,d^2)) for m in 1:12]...)

@@ -220,7 +220,7 @@ end
 
 
 defaultparam = Dict([("LOESS", 0.08), ("polynomial", 1), ("null", 1)])
-defaultorder = Dict([("trigo", 8), ("smooth", 9), ("autotrigo", 50), ("stepwise_trigo", 50)])
+defaultorder = Dict([("trigo", 5), ("smooth", 9), ("autotrigo", 50), ("stepwise_trigo", 50)])
 function decompose(x, date_vec,
     periodicity_model::String="trigo",
     degree_period::Integer=0,
