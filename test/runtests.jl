@@ -105,10 +105,14 @@ ref_data = load(joinpath(@__DIR__, "references.jld2"))["ref_data"]
     @test AreClose(model_uni.monthlyAR.Φ, ref_data[1].Φ)
     @test AreClose(model_uni.monthlyAR.σ, ref_data[1].σ)
     @test AreClose(sample_uni, ref_data[2])
+    rand(model_uni, n_sim=2)
+    rand(model_uni)
 
     @test AreClose(model_multi.monthlyAR.Φ, ref_data[3].Φ)
     @test AreClose(model_multi.monthlyAR.σ, ref_data[3].σ)
     @test AreClose(sample_multi, ref_data[4])
+    rand(model_multi, n_sim=2)
+    rand(model_multi)
 
 end
 

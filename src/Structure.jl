@@ -93,7 +93,7 @@ include("Multi_AR_Estimation.jl")
 ismatrix(M) = false
 ismatrix(M::AbstractMatrix) = true
 
-function random_init_cond(Φ, σ, t)
+function random_init_cond(Φ, σ, t, rng::Random.AbstractRNG)
     if ismatrix(σ[1])
         p, d = length(Φ[1]), size(σ[1])[2]
         y₁ = stack([σ[t] * randn(rng, d) for _ in 1:p], dims=1)
@@ -115,9 +115,9 @@ function Base.rand(rng::Random.AbstractRNG, model::MonthlySWG, n2t::AbstractVect
     σ_nspart = model.σ_trend .* σ_period
     if isnothing(y₁)
         if n_sim == 1
-            return SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ, n2t[1]), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
+            return SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ, n2t[1], rng), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            return [SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ, n2t[1]), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+            return [SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ, n2t[1], rng), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     else
         if n_sim == 1
@@ -130,9 +130,9 @@ end
 function Base.rand(rng::Random.AbstractRNG, model::MonthlyAR, n2t::AbstractVector; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1)
     if isnothing(y₁)
         if n_sim == 1
-            return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1]), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1]), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
+            return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1]), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim] : [SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1]), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+            return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim] : [SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     else
         if n_sim == 1
@@ -148,7 +148,7 @@ end
 Base.rand(model::AR_SWG, n2t::AbstractVector; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(Random.default_rng(), model, n2t, n_sim=n_sim, y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
 Base.rand(model::AR_SWG, date_vec::AbstractVector{Date}; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(Random.default_rng(), model, month.(date_vec), n_sim=n_sim, y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
 Base.rand(rng::Random.AbstractRNG, model::MonthlySWG; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(rng, model, month.(model.date_vec), n_sim=n_sim, y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
-Base.rand(model::MonthlySWG; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(Random.default_rng(), model, month.(model.date_vec), n_sim=n_sim, y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
+Base.rand(model::AR_SWG; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1) = rand(Random.default_rng(), model, month.(model.date_vec), n_sim=n_sim, y₁=y₁, correction=correction, return_res=return_res, nspart=nspart, σ_nspart=σ_nspart)
 
 # rand(myAR, date_vec[1]:date_vec[end], 100, y₁=0.1)
 
