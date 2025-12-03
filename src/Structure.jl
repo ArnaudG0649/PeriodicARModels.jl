@@ -199,11 +199,10 @@ function MonthlyAR(z::AbstractMatrix, date_vec::AbstractVector{Date},
     return MonthlyAR(Φ, Σ)
 end
 
-#test2
 
 function MonthlySWG(x, date_vec;
     p::Integer=1,
-    method_::String=nothing,
+    method_=nothing,
     periodicity_model::String="trigo",
     degree_period::Integer=0,
     Trendtype="LOESS",
