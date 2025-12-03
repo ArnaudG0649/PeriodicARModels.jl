@@ -199,6 +199,8 @@ function MonthlyAR(z::AbstractMatrix, date_vec::AbstractVector{Date},
     return MonthlyAR(Φ, Σ)
 end
 
+#test
+
 function MonthlySWG(x, date_vec;
     p::Integer=1,
     method_::String=nothing,
