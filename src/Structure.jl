@@ -93,12 +93,12 @@ include("Multi_AR_Estimation.jl")
 ismatrix(M) = false
 ismatrix(M::AbstractMatrix) = true
 
-function random_init_cond(Φ, σ)
+function random_init_cond(Φ, σ, t)
     if ismatrix(σ[1])
         p, d = length(Φ[1]), size(σ[1])[2]
-        y₁ = stack([σ[n2t[1]] * randn(rng, d) for _ in 1:p], dims=1)
+        y₁ = stack([σ[t] * randn(rng, d) for _ in 1:p], dims=1)
     else
-        y₁ = [rand(rng, Normal(0, σ[n2t[1]])) for _ in 1:(size(Φ)[2])]
+        y₁ = [rand(rng, Normal(0, σ[t])) for _ in 1:(size(Φ)[2])]
     end
     return y₁
 end
@@ -115,9 +115,9 @@ function Base.rand(rng::Random.AbstractRNG, model::MonthlySWG, n2t::AbstractVect
     σ_nspart = model.σ_trend .* σ_period
     if isnothing(y₁)
         if n_sim == 1
-            return SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
+            return SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ, n2t[1]), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            return [SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+            return [SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ, n2t[1]), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     else
         if n_sim == 1
@@ -130,9 +130,9 @@ end
 function Base.rand(rng::Random.AbstractRNG, model::MonthlyAR, n2t::AbstractVector; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1)
     if isnothing(y₁)
         if n_sim == 1
-            return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
+            return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1]), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1]), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim] : [SimulateScenario(random_init_cond(model.Φ, model.σ), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+            return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1]), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim] : [SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1]), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     else
         if n_sim == 1
@@ -177,19 +177,20 @@ end
 
 function MonthlyAR(z::AbstractVector, date_vec::AbstractVector{Date},
     p::Integer=1;
-    method_::String="monthlyLL",
+    method_="monthlyLL",
     Nb_try=0)
 
+    isnothing(method_) ? method_ = "monthlyLL" : nothing
     Φ, σ = fit_ARMonthlyParameters(z, date_vec, p, method_, Nb_try)
 
     return MonthlyAR(Φ, σ)
 end
 function MonthlyAR(z::AbstractMatrix, date_vec::AbstractVector{Date},
     p::Integer=1;
-    method_::String="monthly",
+    method_="monthly",
     Nb_try=0)
 
-    if method_ == "monthly"
+    if method_ == "monthly" || isnothing(method_)
         Φ, Σ = ParseMonthlyParameter(LL_Multi_AR_Estimation_monthly(z, date_vec, p), size(z)[2])
     else
         nothing #Take Φ Σ daily (e.g 366-length list of matrix for Σ)
@@ -200,7 +201,7 @@ end
 
 function MonthlySWG(x, date_vec;
     p::Integer=1,
-    method_::String="monthlyLL",
+    method_::String=nothing,
     periodicity_model::String="trigo",
     degree_period::Integer=0,
     Trendtype="LOESS",
