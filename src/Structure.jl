@@ -92,6 +92,7 @@ include("Multi_AR_Estimation.jl")
 
 ismatrix(M) = false
 ismatrix(M::AbstractMatrix) = true
+ismulti(model::MonthlySWG) = ismatrix(model.period)
 
 function random_init_cond(Φ, σ, t, rng::Random.AbstractRNG)
     if ismatrix(σ[1])
@@ -117,28 +118,36 @@ function Base.rand(rng::Random.AbstractRNG, model::MonthlySWG, n2t::AbstractVect
         if n_sim == 1
             return SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ, n2t[1], rng), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            return [SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ, n2t[1], rng), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+            if return_res
+                return unzip([SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ, n2t[1], rng), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim])
+            else
+                return [SimulateScenario(random_init_cond(model.monthlyAR.Φ, model.monthlyAR.σ, n2t[1], rng), n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+            end
         end
     else
         if n_sim == 1
             return SimulateScenario(y₁, n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            return [SimulateScenario(y₁, n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+            if return_res
+                return unzip([SimulateScenario(y₁, n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim])
+            else
+                return [SimulateScenario(y₁, n2t, model.monthlyAR.Φ, model.monthlyAR.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+            end
         end
     end
 end
 function Base.rand(rng::Random.AbstractRNG, model::MonthlyAR, n2t::AbstractVector; n_sim::Integer=1, y₁=nothing, correction="resample", return_res=false, nspart=0, σ_nspart=1)
     if isnothing(y₁)
         if n_sim == 1
-            return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
+            return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, rng=rng, correction=correction) : SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim] : [SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+            return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, rng=rng, correction=correction) for _ in 1:n_sim] : [SimulateScenario(random_init_cond(model.Φ, model.σ, n2t[1], rng), n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     else
         if n_sim == 1
-            return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(y₁, n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) : SimulateScenario(y₁, n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
+            return (nspart == 0 && σ_nspart == 1) ? SimulateScenario(y₁, n2t, model.Φ, model.σ, rng=rng, correction=correction) : SimulateScenario(y₁, n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res)
         else
-            return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(y₁, n2t, model.Φ, model.σ, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim] : [SimulateScenario(y₁, n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
+            return (nspart == 0 && σ_nspart == 1) ? [SimulateScenario(y₁, n2t, model.Φ, model.σ, rng=rng, correction=correction) for _ in 1:n_sim] : [SimulateScenario(y₁, n2t, model.Φ, model.σ, nspart, σ_nspart, rng=rng, correction=correction, return_res=return_res) for _ in 1:n_sim]
         end
     end
 end
